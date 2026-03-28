@@ -102,19 +102,19 @@ class _HomeState extends State<Home> {
         _text = 'Processing…';
       });
 
-      final prescription = await _llm.extract(text);
+      final prescriptions = await _llm.extract(text);
 
       setState(() => _loading = false);
 
-      if (prescription == null) {
-        setState(() => _text = 'Failed to extract prescription');
+      if (prescriptions == null || prescriptions.isEmpty) {
+        setState(() => _text = 'No prescription found');
         return;
       }
 
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => EditorScreen(prescription: prescription),
+          builder: (_) => EditorScreen(prescriptions: prescriptions),
         ),
       );
     } else {
@@ -133,54 +133,57 @@ class _HomeState extends State<Home> {
       appBar: AppBar(title: const Text('DocScribe')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "DocScribe",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "AI-powered prescription capture",
-              style: TextStyle(color: Colors.grey),
-            ),
-
-            const SizedBox(height: 24),
-            if (_loading)
-              const CircularProgressIndicator()
-            else
-              StatusCard(
-                ready: _modelReady,
-                text: _text,
-                waking: _wakingUp,
-                onRetry: _wakeModel,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // 🔥 important
+            children: [
+              const Text(
+                "DocScribe",
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "AI-powered prescription capture",
+                style: TextStyle(color: Colors.grey),
               ),
 
-            const SizedBox(height: 40),
+              const SizedBox(height: 24),
 
-            GestureDetector(
-              onTap: _modelReady ? _toggleRecording : null,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: !_modelReady
-                      ? Colors.grey
-                      : _listening
-                      ? Colors.red
-                      : Colors.blue,
+              if (_loading)
+                const CircularProgressIndicator()
+              else
+                StatusCard(
+                  ready: _modelReady,
+                  text: _text,
+                  waking: _wakingUp,
+                  onRetry: _wakeModel,
                 ),
-                child: Icon(
-                  _listening ? Icons.stop : Icons.mic,
-                  color: Colors.white,
-                  size: 36,
+
+              const SizedBox(height: 40),
+
+              GestureDetector(
+                onTap: _modelReady ? _toggleRecording : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: !_modelReady
+                        ? Colors.grey
+                        : _listening
+                        ? Colors.red
+                        : Colors.blue,
+                  ),
+                  child: Icon(
+                    _listening ? Icons.stop : Icons.mic,
+                    color: Colors.white,
+                    size: 36,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

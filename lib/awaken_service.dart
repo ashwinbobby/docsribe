@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class AwakenService {
   static const String _healthUrl =
-      'https://ashbobby-docscribe-gemma.hf.space/health';
+      'https://ashbobby-docscribe-model.hf.space/health';
 
   static Future<bool> wakeModel() async {
     try {

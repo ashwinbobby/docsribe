@@ -3,10 +3,9 @@ import 'package:http/http.dart' as http;
 import 'prescription_model.dart';
 
 class LlmService {
-  static const _endpoint =
-    'https://ashbobby-docscribe-gemma.hf.space/extract';
+  static const _endpoint = 'https://ashbobby-docscribe-model.hf.space/extract';
 
-  Future<Prescription?> extract(String text) async {
+  Future<List<Prescription>?> extract(String text) async {
     try {
       final response = await http
           .post(
@@ -21,7 +20,11 @@ class LlmService {
         return null;
       }
 
-      return Prescription.fromJson(jsonDecode(response.body));
+      final data = jsonDecode(response.body);
+
+      final list = data['prescriptions'] as List;
+
+      return list.map((e) => Prescription.fromJson(e)).toList();
     } catch (e) {
       print('LLM exception: $e');
       return null;
