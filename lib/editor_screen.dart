@@ -27,7 +27,10 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget field(String label, TextEditingController c) {
     return TextField(
       controller: c,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 
@@ -35,20 +38,37 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Confirm Prescription')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            field('Medicine', medicine),
-            field('Dose', dose),
-            field('Timing', timing),
-            field('Duration', duration),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Confirm'),
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 3,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                field('Medicine', medicine),
+                const SizedBox(height: 12),
+                field('Dose', dose),
+                const SizedBox(height: 12),
+                field('Timing', timing),
+                const SizedBox(height: 12),
+                field('Duration', duration),
+
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Confirm Prescription'),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

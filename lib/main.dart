@@ -3,6 +3,8 @@ import 'speech_service.dart';
 import 'llm_service.dart';
 import 'editor_screen.dart';
 import 'awaken_service.dart';
+import 'ui/app_theme.dart';
+import 'ui/widgets/status_card.dart';
 
 final _llm = LlmService();
 
@@ -15,9 +17,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Home(),
+      theme: AppTheme.light,
+      home: const Home(),
     );
   }
 }
@@ -77,11 +80,9 @@ class _HomeState extends State<Home> {
   Future<void> _toggleRecording() async {
     // 🔒 HARD GATE
     if (!_modelReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please wait for AI model'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please wait for AI model')));
       return;
     }
 
@@ -130,42 +131,57 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('DocScribe')),
-      body: Center(
-        child: _loading
-            ? const CircularProgressIndicator()
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _modelReady
-                        ? Icons.check_circle
-                        : Icons.cloud_sync,
-                    color:
-                        _modelReady ? Colors.green : Colors.orange,
-                    size: 36,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _text,
-                    style: const TextStyle(fontSize: 18),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (!_modelReady && !_wakingUp)
-                    TextButton(
-                      onPressed: _wakeModel,
-                      child: const Text('Retry AI wake-up'),
-                    ),
-                ],
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              "DocScribe",
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "AI-powered prescription capture",
+              style: TextStyle(color: Colors.grey),
+            ),
+
+            const SizedBox(height: 24),
+            if (_loading)
+              const CircularProgressIndicator()
+            else
+              StatusCard(
+                ready: _modelReady,
+                text: _text,
+                waking: _wakingUp,
+                onRetry: _wakeModel,
               ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: !_modelReady
-            ? Colors.grey
-            : _listening
-                ? Colors.red
-                : Colors.blue,
-        onPressed: _modelReady ? _toggleRecording : null,
-        child: Icon(_listening ? Icons.stop : Icons.mic),
+
+            const SizedBox(height: 40),
+
+            GestureDetector(
+              onTap: _modelReady ? _toggleRecording : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: !_modelReady
+                      ? Colors.grey
+                      : _listening
+                      ? Colors.red
+                      : Colors.blue,
+                ),
+                child: Icon(
+                  _listening ? Icons.stop : Icons.mic,
+                  color: Colors.white,
+                  size: 36,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
