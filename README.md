@@ -1,16 +1,50 @@
-# docscribe
+# DocScribe
 
-A new Flutter project.
+Flutter app for voice-to-prescription extraction.
 
-## Getting Started
+## Use Local Ollama Through ngrok
 
-This project is a starting point for a Flutter application.
+This app now supports a local Ollama backend (for example `qwen2.5-coder:7b`) and safely falls back to the hosted model if Ollama is unavailable.
 
-A few resources to get you started if this is your first Flutter project:
+### 1. Start Ollama and pull model
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```powershell
+ollama serve
+ollama pull qwen2.5-coder:7b
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 2. Expose Ollama with ngrok
+
+Ollama runs on `11434` by default:
+
+```powershell
+ngrok http 11434
+```
+
+Copy the public HTTPS URL from ngrok, for example:
+`https://abc123.ngrok-free.app`
+
+### 3. Run Flutter with Ollama config
+
+```powershell
+flutter run --dart-define=DOCSCRIBE_LLM_PROVIDER=auto --dart-define=DOCSCRIBE_OLLAMA_BASE_URL=https://abc123.ngrok-free.app --dart-define=DOCSCRIBE_OLLAMA_MODEL=qwen2.5-coder:7b
+```
+
+## Backend Behavior
+
+- `DOCSCRIBE_LLM_PROVIDER=auto`:
+	- Use Ollama first if `DOCSCRIBE_OLLAMA_BASE_URL` is set.
+	- Fall back to hosted model if Ollama fails.
+- `DOCSCRIBE_LLM_PROVIDER=ollama`:
+	- Prefer Ollama first.
+	- Still falls back to hosted model to avoid breaking core functionality.
+- `DOCSCRIBE_LLM_PROVIDER=hosted`:
+	- Use only hosted model path.
+
+Required Ollama define:
+
+- `DOCSCRIBE_OLLAMA_BASE_URL`: your ngrok HTTPS URL.
+
+Optional define:
+
+- `DOCSCRIBE_OLLAMA_MODEL`: defaults to `qwen2.5-coder:7b`.
