@@ -15,11 +15,8 @@ class NativeSttService {
       );
 
       if (_isAvailable) {
-        print('✅ STT initialized');
-
         final locales = await _speech.locales();
 
-        // Prefer exact en_IN → else fallback en_US
         final hasEnIN = locales.any((l) => l.localeId == 'en_IN');
         final hasEnUS = locales.any((l) => l.localeId == 'en_US');
 
@@ -28,12 +25,9 @@ class NativeSttService {
         } else if (hasEnUS) {
           _currentLocale = 'en_US';
         } else {
-          _currentLocale = locales.isNotEmpty
-              ? locales.first.localeId
-              : 'en_US';
+          _currentLocale =
+              locales.isNotEmpty ? locales.first.localeId : 'en_US';
         }
-
-        print('🌍 Using locale: $_currentLocale');
       }
 
       return _isAvailable;
@@ -47,24 +41,14 @@ class NativeSttService {
     required Function(String) onResult,
     required Function(String) onPartialResult,
   }) {
-    if (!_isAvailable) {
-      print('🔴 STT not available');
-      return;
-    }
-
-    if (_speech.isListening) {
-      print('⚠️ Already listening');
-      return;
-    }
-
-    print('▶️ Start listening ($_currentLocale)');
+    if (!_isAvailable) return;
+    if (_speech.isListening) return;
 
     _speech.listen(
       onResult: (result) {
         final text = result.recognizedWords;
 
         if (result.finalResult) {
-          print('✅ Final: $text');
           onResult(text);
         } else {
           onPartialResult(text);
@@ -72,18 +56,17 @@ class NativeSttService {
       },
       localeId: _currentLocale,
       listenOptions: SpeechListenOptions(
-        listenMode: ListenMode.dictation, // 🔥 important change
+        listenMode: ListenMode.dictation,
         partialResults: true,
         cancelOnError: false,
         autoPunctuation: true,
       ),
-      pauseFor: const Duration(seconds: 2),
+      // 🚫 NO pauseFor → manual stop only
     );
   }
 
   void stopListening() {
     if (_speech.isListening) {
-      print('⏹️ Stop listening');
       _speech.stop();
     }
   }
@@ -95,7 +78,6 @@ class NativeSttService {
       final locales = await _speech.locales();
       return locales.map((l) => l.localeId).toList();
     } catch (e) {
-      print('⚠️ Locale fetch error: $e');
       return ['en_IN', 'en_US'];
     }
   }
