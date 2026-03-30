@@ -1,48 +1,63 @@
 import 'package:flutter/material.dart';
+import 'live_transcription.dart';
 
 class StatusCard extends StatelessWidget {
-  final bool ready;
+  final bool listening;
+  final bool loading;
   final String text;
-  final bool waking;
-  final VoidCallback? onRetry;
+  final String liveText;
 
   const StatusCard({
     super.key,
-    required this.ready,
+    required this.listening,
+    required this.loading,
     required this.text,
-    required this.waking,
-    this.onRetry,
+    required this.liveText,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    Widget content;
+
+    if (listening) {
+      content = Column(
+        children: [
+          const Text(
+            "🎤 Listening...",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+          ),
+          const SizedBox(height: 8),
+          LiveTranscription(text: liveText),
+        ],
+      );
+    } else if (loading) {
+      content = Column(
+        children: const [
+          CircularProgressIndicator(),
+          SizedBox(height: 12),
+          Text("Processing on local AI..."),
+        ],
+      );
+    } else {
+      content = Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 16),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(blurRadius: 12, color: Colors.black.withOpacity(0.05)),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Icon(
-              ready ? Icons.check_circle : Icons.cloud_sync,
-              size: 48,
-              color: ready ? Colors.green : Colors.orange,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-            if (!ready && !waking)
-              TextButton(
-                onPressed: onRetry,
-                child: const Text("Retry"),
-              ),
-          ],
-        ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: content,
       ),
     );
   }
