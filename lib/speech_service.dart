@@ -6,7 +6,6 @@ class SpeechService {
 
   bool _initialized = false;
   String _buffer = '';
-  bool _finalReceived = false;
   Completer<String>? _finalCompleter;
 
   Future<bool> init() async {
@@ -24,7 +23,6 @@ class SpeechService {
     if (!ok) return;
 
     _buffer = '';
-    _finalReceived = false;
     _finalCompleter = Completer<String>();
 
     print('▶️ START listening');
@@ -32,12 +30,16 @@ class SpeechService {
     _nativeStt.startListening(
       onResult: (text) {
         _buffer = text;
-        _finalReceived = true;
+
         print('🎯 Final: $text');
-        onFinalResult?.call(text);
+
+        // Complete ONLY once
         if (!(_finalCompleter?.isCompleted ?? true)) {
           _finalCompleter?.complete(text);
         }
+
+        // UI callback
+        onFinalResult?.call(text);
       },
       onPartialResult: (text) {
         _buffer = text;
@@ -47,29 +49,25 @@ class SpeechService {
     );
   }
 
-  /// Stop listening and wait up to 3 seconds for the final STT result.
+  /// Stop listening and safely return final result
   Future<String?> stopListening() async {
     print('⏹️ STOP listening');
     _nativeStt.stopListening();
 
-    // If final result already came in, use it immediately
-    if (_finalReceived) {
-      final result = _buffer.trim();
-      print('🎯 Final text (immediate): $result');
-      return result.isEmpty ? null : result;
-    }
-
-    // Otherwise wait for the final callback (max 3 seconds)
     try {
+      // Wait for final result (max 2 seconds)
       final result = await _finalCompleter!.future
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 2));
+
       final trimmed = result.trim();
       print('🎯 Final text (waited): $trimmed');
+
       return trimmed.isEmpty ? null : trimmed;
     } on TimeoutException {
-      // Fall back to whatever is in the buffer
+      // Fallback to buffer if final didn't arrive
       final fallback = _buffer.trim();
-      print('⚠️ STT final timeout, using buffer: $fallback');
+      print('⚠️ Timeout → using buffer: $fallback');
+
       return fallback.isEmpty ? null : fallback;
     }
   }
