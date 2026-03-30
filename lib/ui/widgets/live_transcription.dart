@@ -16,10 +16,7 @@ class LiveTranscription extends StatelessWidget {
         text.isEmpty ? "Listening... speak now" : text,
         key: ValueKey(text),
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 16,
-          height: 1.4,
-        ),
+        style: const TextStyle(fontSize: 16),
       ),
     );
   }
