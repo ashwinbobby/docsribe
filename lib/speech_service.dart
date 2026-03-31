@@ -5,13 +5,24 @@ class SpeechService {
   final NativeSttService _nativeStt = NativeSttService();
 
   bool _initialized = false;
+  bool _shouldKeepListening = false;
+
   String _buffer = '';
-  Completer<String>? _finalCompleter;
+
+  Function(String)? _onPartial;
+  Function(String)? _onFinal;
 
   Future<bool> init() async {
     if (_initialized) return true;
-    _initialized = await _nativeStt.init();
-    print('✅ Speech initialized: $_initialized');
+
+    _initialized = await _nativeStt.init(
+      onDone: () {
+        if (_shouldKeepListening) {
+          _restartListening();
+        }
+      },
+    );
+
     return _initialized;
   }
 
@@ -22,54 +33,45 @@ class SpeechService {
     final ok = await init();
     if (!ok) return;
 
+    _shouldKeepListening = true;
     _buffer = '';
-    _finalCompleter = Completer<String>();
 
-    print('▶️ START listening');
+    _onPartial = onPartialResult;
+    _onFinal = onFinalResult;
 
     _nativeStt.startListening(
       onResult: (text) {
-        _buffer = text;
-
-        print('🎯 Final: $text');
-
-        // Complete ONLY once
-        if (!(_finalCompleter?.isCompleted ?? true)) {
-          _finalCompleter?.complete(text);
-        }
-
-        // UI callback
-        onFinalResult?.call(text);
+        _buffer += " " + text;
+        _onFinal?.call(text);
       },
       onPartialResult: (text) {
-        _buffer = text;
-        onPartialResult?.call(text);
-        print('📝 Live: $text');
+        _onPartial?.call(text);
       },
     );
   }
 
-  /// Stop listening and safely return final result
+  void _restartListening() async {
+    if (!_shouldKeepListening) return;
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    _nativeStt.startListening(
+      onResult: (text) {
+        _buffer += " " + text;
+        _onFinal?.call(text);
+      },
+      onPartialResult: (text) {
+        _onPartial?.call(text);
+      },
+    );
+  }
+
   Future<String?> stopListening() async {
-    print('⏹️ STOP listening');
+    _shouldKeepListening = false;
     _nativeStt.stopListening();
 
-    try {
-      // Wait for final result (max 2 seconds)
-      final result = await _finalCompleter!.future
-          .timeout(const Duration(seconds: 2));
-
-      final trimmed = result.trim();
-      print('🎯 Final text (waited): $trimmed');
-
-      return trimmed.isEmpty ? null : trimmed;
-    } on TimeoutException {
-      // Fallback to buffer if final didn't arrive
-      final fallback = _buffer.trim();
-      print('⚠️ Timeout → using buffer: $fallback');
-
-      return fallback.isEmpty ? null : fallback;
-    }
+    final trimmed = _buffer.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   bool get isListening => _nativeStt.isListening;

@@ -4,7 +4,7 @@ import '../models/medicine.dart';
 
 class LlmService {
   static const String _endpoint =
-      'https://presartorial-unprovincially-selina.ngrok-free.dev/extract-medicines';
+      'https://uneminent-abigail-auteciously.ngrok-free.dev/extract-medicines';
 
   Future<List<Medicine>?> extractMedicines(String text) async {
     try {

@@ -4,25 +4,39 @@ class NativeSttService {
   final SpeechToText _speech = SpeechToText();
 
   bool _isAvailable = false;
+  bool _isListening = false;
+
   String _currentLocale = "en_IN";
 
-  Future<bool> init() async {
+  Function()? _onDoneCallback;
+
+  Future<bool> init({Function()? onDone}) async {
     try {
+      _onDoneCallback = onDone;
+
       _isAvailable = await _speech.initialize(
         onError: (val) => print('🔴 STT Error: $val'),
-        onStatus: (val) => print('🟡 STT Status: $val'),
+        onStatus: (status) async {
+          print('🟡 STT Status: $status');
+
+          if (status == "done" || status == "notListening") {
+            _isListening = false;
+
+            if (_onDoneCallback != null) {
+              await Future.delayed(const Duration(milliseconds: 300));
+              _onDoneCallback!();
+            }
+          }
+        },
         debugLogging: false,
       );
 
       if (_isAvailable) {
         final locales = await _speech.locales();
 
-        final hasEnIN = locales.any((l) => l.localeId == 'en_IN');
-        final hasEnUS = locales.any((l) => l.localeId == 'en_US');
-
-        if (hasEnIN) {
+        if (locales.any((l) => l.localeId == 'en_IN')) {
           _currentLocale = 'en_IN';
-        } else if (hasEnUS) {
+        } else if (locales.any((l) => l.localeId == 'en_US')) {
           _currentLocale = 'en_US';
         } else {
           _currentLocale =
@@ -40,38 +54,36 @@ class NativeSttService {
   void startListening({
     required Function(String) onResult,
     required Function(String) onPartialResult,
-  }) {
+  }) async {
     if (!_isAvailable) return;
-    if (_speech.isListening) return;
 
-    _speech.listen(
+    if (_isListening) return;
+
+    _isListening = true;
+
+    await _speech.listen(
       onResult: (result) {
-        final text = result.recognizedWords;
-
         if (result.finalResult) {
-          onResult(text);
+          onResult(result.recognizedWords);
         } else {
-          onPartialResult(text);
+          onPartialResult(result.recognizedWords);
         }
       },
+      listenMode: ListenMode.dictation,
+      partialResults: true,
+      pauseFor: const Duration(seconds: 1000),
+      listenFor: const Duration(minutes: 10),
       localeId: _currentLocale,
-      listenOptions: SpeechListenOptions(
-        listenMode: ListenMode.dictation,
-        partialResults: true,
-        cancelOnError: false,
-        autoPunctuation: true,
-      ),
-      // 🚫 NO pauseFor → manual stop only
+      cancelOnError: false,
     );
   }
 
   void stopListening() {
-    if (_speech.isListening) {
-      _speech.stop();
-    }
+    _isListening = false;
+    _speech.stop();
   }
 
-  bool get isListening => _speech.isListening;
+  bool get isListening => _isListening;
 
   Future<List<String>> getAvailableLanguages() async {
     try {
