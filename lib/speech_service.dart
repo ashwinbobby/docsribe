@@ -8,6 +8,7 @@ class SpeechService {
   bool _shouldKeepListening = false;
 
   String _buffer = '';
+  String _latestPartial = '';
 
   Function(String)? _onPartial;
   Function(String)? _onFinal;
@@ -35,16 +36,19 @@ class SpeechService {
 
     _shouldKeepListening = true;
     _buffer = '';
+    _latestPartial = '';
 
     _onPartial = onPartialResult;
     _onFinal = onFinalResult;
 
     _nativeStt.startListening(
       onResult: (text) {
-        _buffer += " " + text;
+        _buffer = ('$_buffer $text').trim();
+        _latestPartial = '';
         _onFinal?.call(text);
       },
       onPartialResult: (text) {
+        _latestPartial = text;
         _onPartial?.call(text);
       },
     );
@@ -57,10 +61,12 @@ class SpeechService {
 
     _nativeStt.startListening(
       onResult: (text) {
-        _buffer += " " + text;
+        _buffer = ('$_buffer $text').trim();
+        _latestPartial = '';
         _onFinal?.call(text);
       },
       onPartialResult: (text) {
+        _latestPartial = text;
         _onPartial?.call(text);
       },
     );
@@ -70,7 +76,10 @@ class SpeechService {
     _shouldKeepListening = false;
     _nativeStt.stopListening();
 
-    final trimmed = _buffer.trim();
+    // Give STT a brief window to emit the last final callback after stop.
+    await Future.delayed(const Duration(milliseconds: 250));
+
+    final trimmed = ('$_buffer $_latestPartial').trim();
     return trimmed.isEmpty ? null : trimmed;
   }
 

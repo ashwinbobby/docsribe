@@ -1,8 +1,9 @@
 ﻿import 'package:flutter/material.dart';
+
 import '../../speech_service.dart';
-import '../../text_normalizer.dart';
 import '../../services/llm_service.dart';
-import 'prescription_screen.dart';
+import '../../text_normalizer.dart';
+import 'prescription_editor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,27 +17,17 @@ class _HomeScreenState extends State<HomeScreen> {
   final _llm = LlmService();
 
   bool _listening = false;
-  bool _loading = false;
+  bool _sending = false;
 
   String _liveTranscription = '';
   String _fullText = '';
-  String _language = 'Detecting...';
+  String _capturedText = '';
 
   @override
   void initState() {
     super.initState();
-    _detectLanguage();
-  }
-
-  Future<void> _detectLanguage() async {
-    final languages = await _speech.getAvailableLanguages();
-    if (mounted) {
-      setState(() {
-        _language = languages.contains('en_IN')
-            ? '🇮🇳 English (en_IN)'
-            : '🇺🇸 English';
-      });
-    }
+    // Trigger STT initialization early for first-use responsiveness.
+    _speech.getAvailableLanguages();
   }
 
   Future<void> _toggleRecording() async {
@@ -45,79 +36,111 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         _listening = false;
-        _loading = true;
-        _liveTranscription = '';
+        _capturedText = (text ?? _fullText).trim();
       });
 
-      await _process(text ?? _fullText);
       _fullText = '';
     } else {
       setState(() {
         _listening = true;
         _liveTranscription = '';
         _fullText = '';
+        _capturedText = '';
       });
 
       await _speech.startListening(
         onPartialResult: (t) {
           if (mounted) {
             setState(() {
-              _liveTranscription = (_fullText + ' ' + t).trim();
+              _liveTranscription = '$_fullText $t'.trim();
             });
           }
         },
         onFinalResult: (t) {
-          _fullText = (_fullText + ' ' + t).trim();
+          _fullText = '$_fullText $t'.trim();
         },
       );
     }
   }
 
-  Future<void> _process(String text) async {
-    final trimmed = text.trim();
+  Future<void> _sendTranscription() async {
+    final trimmed = _capturedText.trim();
+    if (trimmed.isEmpty || _sending) return;
 
-    if (trimmed.isEmpty) {
-      setState(() {
-        _loading = false;
-      });
+    setState(() => _sending = true);
+
+    final normalized = TextNormalizer.normalize(trimmed);
+    final meds = await _llm.extractMedicines(normalized);
+
+    if (!mounted) {
       return;
     }
 
-    final normalized = TextNormalizer.normalize(trimmed);
+    setState(() => _sending = false);
 
-    final meds = await _llm.extractMedicines(normalized);
+    if (meds == null || meds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No medicines found from transcription.')),
+      );
+      return;
+    }
 
-    setState(() => _loading = false);
-
-    if (meds == null || meds.isEmpty) return;
-
-    Navigator.push(
+    await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PrescriptionScreen(medicines: meds)),
+      MaterialPageRoute(
+        builder: (_) => PrescriptionEditorScreen(initialMedicines: meds),
+      ),
     );
   }
 
   Widget _buildListeningView() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blue.withOpacity(0.2)),
-      ),
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text(
-            '🎤 Listening...',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+            'Listening',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+            ),
           ),
           const SizedBox(height: 12),
-          Text(
-            _liveTranscription.isEmpty ? 'Start speaking...' : _liveTranscription,
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Text(
+              _liveTranscription.isEmpty
+                  ? 'Start speaking. Your transcript will appear here.'
+                  : _liveTranscription,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 30,
+                height: 1.25,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF111827),
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStoppedView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Text(
+          _capturedText,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 30,
+            height: 1.25,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF111827),
+          ),
+        ),
       ),
     );
   }
@@ -147,53 +170,58 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              const Row(
                 children: [
-                  const Text(
+                  Text(
                     'DocScribe',
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'LIVE',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
                 ],
-              ),
-              const SizedBox(height: 6),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _language,
-                  style: const TextStyle(
-                    color: Colors.blue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
               ),
               const SizedBox(height: 20),
               Expanded(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
-                  child: _loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _listening
-                          ? _buildListeningView()
-                          : _buildIdleView(),
+                  child: _listening
+                      ? _buildListeningView()
+                      : _capturedText.isNotEmpty
+                      ? _buildStoppedView()
+                      : _buildIdleView(),
                 ),
               ),
+              if (_sending) ...[
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                      ),
+                      SizedBox(width: 10),
+                      Text('Sending to backend...'),
+                    ],
+                  ),
+                ),
+              ],
+              if (!_listening && _capturedText.isNotEmpty) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _sending ? null : _sendTranscription,
+                    icon: const Icon(Icons.send_rounded),
+                    label: Text(_sending ? 'Sending...' : 'Send'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF111827),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               const SizedBox(height: 12),
               GestureDetector(
                 onTap: _toggleRecording,
@@ -206,8 +234,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: _listening ? Colors.red : const Color(0xFF2563EB),
                     boxShadow: [
                       BoxShadow(
-                        color: (_listening ? Colors.red : const Color(0xFF2563EB))
-                            .withOpacity(0.4),
+                        color:
+                            (_listening ? Colors.red : const Color(0xFF2563EB))
+                                .withValues(alpha: 0.4),
                         blurRadius: 20,
                       ),
                     ],
@@ -221,7 +250,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _listening ? 'Tap to stop recording' : 'Tap to start recording',
+                _listening
+                    ? 'Tap to stop recording'
+                    : _capturedText.isNotEmpty
+                    ? 'Tap mic to record again'
+                    : 'Tap to start recording',
                 style: const TextStyle(color: Colors.grey),
               ),
             ],

@@ -6,11 +6,7 @@ class MedicineCard extends StatelessWidget {
   final Medicine med;
   final Function(Medicine) onUpdated;
 
-  const MedicineCard({
-    super.key,
-    required this.med,
-    required this.onUpdated,
-  });
+  const MedicineCard({super.key, required this.med, required this.onUpdated});
 
   Widget row(String label, String value) {
     return Padding(
@@ -54,8 +50,8 @@ class MedicineCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               blurRadius: 10,
-              color: Colors.black.withOpacity(0.05),
-            )
+              color: Colors.black.withValues(alpha: 0.05),
+            ),
           ],
         ),
         child: Column(

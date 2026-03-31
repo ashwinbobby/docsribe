@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:speech_to_text/speech_to_text.dart';
 
 class NativeSttService {
@@ -15,9 +17,9 @@ class NativeSttService {
       _onDoneCallback = onDone;
 
       _isAvailable = await _speech.initialize(
-        onError: (val) => print('🔴 STT Error: $val'),
+        onError: (val) => log('STT Error: $val', name: 'NativeSttService'),
         onStatus: (status) async {
-          print('🟡 STT Status: $status');
+          log('STT Status: $status', name: 'NativeSttService');
 
           if (status == "done" || status == "notListening") {
             _isListening = false;
@@ -39,14 +41,15 @@ class NativeSttService {
         } else if (locales.any((l) => l.localeId == 'en_US')) {
           _currentLocale = 'en_US';
         } else {
-          _currentLocale =
-              locales.isNotEmpty ? locales.first.localeId : 'en_US';
+          _currentLocale = locales.isNotEmpty
+              ? locales.first.localeId
+              : 'en_US';
         }
       }
 
       return _isAvailable;
     } catch (e) {
-      print("🔴 Init Error: $e");
+      log('Init Error: $e', name: 'NativeSttService');
       return false;
     }
   }
@@ -69,12 +72,14 @@ class NativeSttService {
           onPartialResult(result.recognizedWords);
         }
       },
-      listenMode: ListenMode.dictation,
-      partialResults: true,
       pauseFor: const Duration(seconds: 1000),
       listenFor: const Duration(minutes: 10),
       localeId: _currentLocale,
-      cancelOnError: false,
+      listenOptions: SpeechListenOptions(
+        listenMode: ListenMode.dictation,
+        partialResults: true,
+        cancelOnError: false,
+      ),
     );
   }
 

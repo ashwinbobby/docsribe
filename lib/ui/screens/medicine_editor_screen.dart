@@ -7,8 +7,7 @@ class MedicineEditorScreen extends StatefulWidget {
   const MedicineEditorScreen({super.key, required this.medicine});
 
   @override
-  State<MedicineEditorScreen> createState() =>
-      _MedicineEditorScreenState();
+  State<MedicineEditorScreen> createState() => _MedicineEditorScreenState();
 }
 
 class _MedicineEditorScreenState extends State<MedicineEditorScreen> {
@@ -35,9 +34,7 @@ class _MedicineEditorScreenState extends State<MedicineEditorScreen> {
         controller: c,
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
@@ -56,11 +53,19 @@ class _MedicineEditorScreenState extends State<MedicineEditorScreen> {
   }
 
   @override
+  void dispose() {
+    name.dispose();
+    duration.dispose();
+    frequency.dispose();
+    timing.dispose();
+    food.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Edit Medicine"),
-      ),
+      appBar: AppBar(title: const Text("Edit Medicine")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -71,10 +76,7 @@ class _MedicineEditorScreenState extends State<MedicineEditorScreen> {
             field("Timing", timing),
             field("Food Relation", food),
             const Spacer(),
-            ElevatedButton(
-              onPressed: _save,
-              child: const Text("Save"),
-            ),
+            ElevatedButton(onPressed: _save, child: const Text("Save")),
           ],
         ),
       ),
